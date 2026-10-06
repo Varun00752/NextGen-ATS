@@ -62,17 +62,18 @@ def safe_float(v, default=0.0):
         return default
 
 # =========================================================
-# SESSION STATE MANAGEMENT
+# SESSION STATE MANAGEMENT (DEFAULT TO ACTIVE DEMO)
 # =========================================================
 def init_session():
     defaults = {
-        "logged_in": False,
-        "user_id": None,
-        "user_name": "",
-        "user_email": "",
+        "logged_in": True,
+        "user_id": 2,
+        "user_name": "Varun Pandey (Recruiter)",
+        "user_email": "recruiter@ats.com",
         "user_role": "Recruiter",
-        "user_department": "General",
+        "user_department": "Talent Acquisition",
         "theme_mode": "Light",
+        "sample_resume_text": ""
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -206,23 +207,6 @@ def init_db():
             VALUES (?, ?, ?, ?, ?, ?)
             """, (name, email, pwd, role, dept, now()))
 
-    # Seed Sample Job if none exists
-    cur.execute("SELECT count(*) FROM jobs")
-    if cur.fetchone()[0] == 0:
-        cur.execute("""
-        INSERT INTO jobs (job_title, department, required_skills, experience_required, job_description, created_by, created_at, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            "Senior Python & AI Engineer",
-            "Data Science",
-            "Python, Machine Learning, NLP, SQL, Docker, Scikit-Learn, Pandas, Git",
-            "3+ years",
-            "We are seeking an experienced AI/ML Engineer to build intelligent NLP pipelines, deploy scalable machine learning models, and develop predictive analytics solutions.",
-            "admin@ats.com",
-            now(),
-            "Open"
-        ))
-
     conn.commit()
     conn.close()
 
@@ -307,7 +291,7 @@ def apply_theme():
     }}
 
     .block-container {{
-        padding-top: 4.5rem !important;
+        padding-top: 4rem !important;
         padding-bottom: 5rem !important;
         max-width: 96% !important;
     }}
@@ -352,7 +336,7 @@ def apply_theme():
     }}
 
     .hero-title {{
-        font-size: 34px;
+        font-size: 32px;
         font-weight: 900;
         color: {text};
         margin-bottom: 6px;
@@ -375,11 +359,11 @@ def apply_theme():
     }}
 
     .acceptance-card {{
-        background: linear-gradient(135deg, rgba(16,185,129,0.10), rgba(59,130,246,0.10));
-        border: 1px solid rgba(16,185,129,0.3);
+        background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(59,130,246,0.12));
+        border: 1px solid rgba(16,185,129,0.35);
         border-radius: 20px;
-        padding: 22px;
-        margin-bottom: 20px;
+        padding: 24px;
+        margin-bottom: 22px;
     }}
 
     [data-testid="stMetric"] {{
@@ -632,7 +616,6 @@ def score_experience_deterministic(text, required_exp_str=""):
     if matches:
         exp_years = max([float(m) for m in matches if float(m) < 40])
     else:
-        # Check date range indicators (e.g. 2020 - 2024)
         year_matches = re.findall(r'\b(20\d{2}|19\d{2})\s*(?:-|–|to)\s*(20\d{2}|present|current)\b', text_lower)
         if year_matches:
             current_yr = datetime.now().year
@@ -645,7 +628,6 @@ def score_experience_deterministic(text, required_exp_str=""):
             if diffs:
                 exp_years = float(max(diffs))
 
-    # Parse required experience
     req_years = 2.0
     req_match = re.search(r'(\d+(?:\.\d+)?)', str(required_exp_str))
     if req_match:
@@ -808,7 +790,6 @@ def analyze_resume_pipeline(resume_text, job_title, jd_skills, jd_description, j
     comm_score = score_communication_deterministic(resume_text)
     fake_score = detect_fake_resume_deterministic(resume_text)
 
-    # Job description skill matching
     jd_skill_list = [s.strip().lower() for s in str(jd_skills).split(",") if s.strip()]
     cand_skill_lower = [s.lower() for s in candidate_skills]
     matched = [s for s in jd_skill_list if s in cand_skill_lower]
@@ -818,7 +799,6 @@ def analyze_resume_pipeline(resume_text, job_title, jd_skills, jd_description, j
     jd_full_text = f"{job_title} {jd_skills} {jd_description}"
     tfidf_score = compute_tfidf_similarity(resume_text, jd_full_text)
 
-    # Weighted Composite Score
     composite_score = round(
         (skill_score * 0.35) +
         (tfidf_score * 0.25) +
@@ -882,7 +862,7 @@ def save_candidate_record(cand):
     ))
 
 # =========================================================
-# COMPREHENSIVE PDF REPORT BUILDER (WITH ACCEPTANCE POINTS)
+# COMPREHENSIVE PDF REPORT BUILDER
 # =========================================================
 def generate_candidate_pdf(candidate):
     buffer = io.BytesIO()
@@ -926,7 +906,6 @@ def generate_candidate_pdf(candidate):
         c.drawString(185, y, str(val))
         y -= 22
 
-    # Draw Section for Key Company Points on Page 1
     c.line(50, y - 6, 550, y - 6)
     y -= 22
     c.setFont("Helvetica-Bold", 11)
@@ -990,6 +969,42 @@ def generate_candidate_pdf(candidate):
     return buffer
 
 # =========================================================
+# SAMPLE RESUMES FOR QUICK 1-CLICK TESTING
+# =========================================================
+SAMPLE_RESUMES = {
+    "Senior AI & NLP Engineer": """Dr. Rajesh Sharma
+Senior AI & NLP Engineer with 5 years of experience in Python, Machine Learning, Deep Learning, and NLP.
+Email: rajesh.sharma@gmail.com | Phone: +91 9876543210
+Education: Ph.D. in Computer Science & Machine Learning from Indian Institute of Technology.
+Experience:
+Lead AI Scientist at NeuroTech AI (2021 - Present).
+- Architected end-to-end NLP and Transformer pipelines using PyTorch, HuggingFace, and Scikit-Learn.
+- Deployed microservices using Docker, FastAPI, and PostgreSQL on AWS cloud.
+- Implemented vector search and semantic retrieval reducing latency by 45%.
+Skills: Python, Machine Learning, Deep Learning, NLP, PyTorch, Scikit-Learn, Docker, SQL, Pandas, NumPy, Git, FastAPI, AWS, Linux.""",
+
+    "Full Stack Web Developer": """Aarav Mehta
+Full Stack Web Developer with 3 years of experience in JavaScript, React, Node.js, and Python.
+Email: aarav.mehta@dev.io | Phone: +91 9712345678
+Education: B.Tech in Information Technology from National Institute of Technology.
+Experience:
+Full Stack Developer at CloudScale Systems (2021 - 2024).
+- Built reactive enterprise web applications using React, Redux, and Tailwind CSS.
+- Designed RESTful API backends with Node.js, Express, and Python FastAPI.
+- Optimized SQL database queries and containerized microservices with Docker.
+Skills: JavaScript, React, Node.js, Python, HTML, CSS, SQL, Git, Docker, REST APIs, MongoDB, Tailwind.""",
+
+    "Junior Fresher Developer": """Nitin Das
+Entry Level Web Developer seeking junior software engineer opportunities.
+Email: nitin@gmail.com | Phone: +91 9811122233
+Education: Bachelor of Computer Applications (BCA) graduate.
+Projects:
+- Personal Portfolio Website built with HTML, CSS, and basic JavaScript.
+- Simple Calculator and Todo App using JavaScript and SQLite.
+Skills: HTML, CSS, JavaScript, SQL, Git."""
+}
+
+# =========================================================
 # STANDALONE RESUME & COMPANY ACCEPTANCE ANALYZER PAGE
 # =========================================================
 def resume_acceptance_review_page():
@@ -1024,9 +1039,9 @@ def resume_acceptance_review_page():
             render_skill_chips(target_skills)
         else:
             company_name = st.text_input("Company / Organization Name", value="Google / Enterprise Corp")
-            target_role = st.text_input("Target Job Title", value="Senior AI / Python Engineer")
+            target_role = st.text_input("Target Job Title", value="Senior AI & Python Engineer")
             target_exp = st.text_input("Required Experience", value="3+ years")
-            target_skills = st.text_area("Required Technical Skills (Comma separated)", value="Python, Machine Learning, NLP, SQL, Docker, Scikit-Learn")
+            target_skills = st.text_area("Required Technical Skills (Comma separated)", value="Python, Machine Learning, NLP, SQL, Docker, Scikit-Learn, FastAPI")
             target_desc = st.text_area("Job Description Summary", value="Build production NLP models, design robust microservices, and deliver scalable AI pipelines.")
 
         st.markdown('</div>', unsafe_allow_html=True)
@@ -1035,8 +1050,25 @@ def resume_acceptance_review_page():
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
         st.subheader("2. Upload or Paste Candidate Resume")
 
+        st.write("**⚡ 1-Click Load Sample Resume:**")
+        c_btn1, c_btn2, c_btn3 = st.columns(3)
+        if c_btn1.button("📄 Senior AI Resume", use_container_width=True):
+            st.session_state.sample_resume_text = SAMPLE_RESUMES["Senior AI & NLP Engineer"]
+            st.rerun()
+        if c_btn2.button("📄 Full Stack Resume", use_container_width=True):
+            st.session_state.sample_resume_text = SAMPLE_RESUMES["Full Stack Web Developer"]
+            st.rerun()
+        if c_btn3.button("📄 Fresher Resume", use_container_width=True):
+            st.session_state.sample_resume_text = SAMPLE_RESUMES["Junior Fresher Developer"]
+            st.rerun()
+
         up_file = st.file_uploader("Upload Resume File (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"], key="rev_uploader")
-        paste_text = st.text_area("Or Paste Raw Resume Text directly", height=150, placeholder="Paste resume contents here...")
+        paste_text = st.text_area(
+            "Or Paste Resume Text (or edit sample below):",
+            value=st.session_state.sample_resume_text,
+            height=160,
+            placeholder="Paste candidate resume contents here..."
+        )
 
         analyze_btn = st.button("🚀 Analyze for Company & Interviewer Acceptance", use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
@@ -1128,84 +1160,6 @@ def resume_acceptance_review_page():
             mime="application/pdf",
             use_container_width=True
         )
-
-# =========================================================
-# AUTHENTICATION PAGE
-# =========================================================
-def auth_page():
-    render_hero(
-        "⚡ NextGen ATS: AI Resume Screening & Hiring Intelligence",
-        "Next-generation Applicant Tracking System powered by NLP, TF-IDF matching, deterministic scoring, and corporate interviewer acceptance intelligence.",
-        "Production Ready"
-    )
-
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("NLP Modules", "10+ Live")
-    c2.metric("User Roles", "Admin / Recruiter / Candidate")
-    c3.metric("Company Acceptance", "Automated")
-    c4.metric("Scoring", "Deterministic")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    col1, col2 = st.columns([1.1, 0.9], gap="large")
-
-    with col1:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.subheader("🚀 Platform Capabilities")
-        st.markdown("""
-        * **Company & Interviewer Acceptance Engine**: Analyzes resumes against company requirements and generates concrete professional points to get accepted.
-        * **Deterministic AI Resume Parser**: Extracts skills, degrees, experience, and contact details with zero random bias.
-        * **TF-IDF & N-gram Similarity**: Semantic matching of resumes directly against detailed Job Descriptions.
-        * **Enterprise Role-Based Access Control**: Strict UI isolation for Administrators, Recruiters, and Candidates.
-        * **Full Hiring Lifecycle**: From multi-resume batch upload to candidate pipeline, interview scheduling, and feedback.
-        * **Intelligent Recruiter Assistant**: Dynamic query engine for instant candidate analytics and gap discovery.
-        * **Exportable Reports**: Generate instant audit PDF scorecards and CSV exports.
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col2:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        tab_login, tab_register = st.tabs(["🔐 Sign In", "📝 Create Account"])
-
-        with tab_login:
-            st.markdown("#### Access Portal")
-            email = st.text_input("Work Email", key="in_email", placeholder="admin@ats.com")
-            password = st.text_input("Password", type="password", key="in_pwd", placeholder="••••••••")
-
-            if st.button("Sign In to ATS", use_container_width=True):
-                user = login_user(email, password)
-                if user:
-                    st.session_state.logged_in = True
-                    st.session_state.user_id = user[0]
-                    st.session_state.user_name = user[1]
-                    st.session_state.user_email = user[2]
-                    st.session_state.user_role = user[4]
-                    st.session_state.user_department = user[5] or "General"
-                    st.success(f"Welcome back, {user[1]}!")
-                    st.rerun()
-                else:
-                    st.error("Invalid email or password.")
-
-            st.markdown("---")
-            st.caption("Default Demo Logins:")
-            st.code("Admin:     admin@ats.com     / admin123\nRecruiter: recruiter@ats.com / recruiter123\nCandidate: candidate@ats.com / candidate123", language="text")
-
-        with tab_register:
-            st.markdown("#### New Account Registration")
-            r_name = st.text_input("Full Name", key="reg_name")
-            r_email = st.text_input("Email", key="reg_email")
-            r_pwd = st.text_input("Create Password", type="password", key="reg_pwd")
-            r_role = st.selectbox("Role", ["Candidate", "Recruiter", "HR Manager", "Admin"], key="reg_role")
-            r_dept = st.selectbox("Department", ["General", "Engineering", "Data Science", "HR", "Sales", "Operations"], key="reg_dept")
-
-            if st.button("Complete Registration", use_container_width=True):
-                if r_name and r_email and r_pwd:
-                    if insert_user(r_name, r_email, r_pwd, r_role, r_dept):
-                        st.success("Account created successfully! You can now sign in.")
-                    else:
-                        st.error("Account already exists with this email address.")
-                else:
-                    st.warning("Please fill in all required fields.")
-        st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================
 # RECRUITER / ADMIN DASHBOARD
@@ -1418,7 +1372,6 @@ def candidate_pipeline_page():
                 st.markdown("**Missing Skills:**")
                 render_skill_chips(cand['skill_gap'], missing=True)
 
-            # COMPANY ACCEPTANCE EXPANDER
             insights = generate_company_acceptance_insights(cand)
             with st.expander("🎯 Company Acceptance Points & Interviewer Guide"):
                 st.markdown(f"**Interviewer Acceptance Probability:** `{insights['acceptance_prob']}%` ({insights['verdict']})")
@@ -1498,7 +1451,7 @@ def interview_page():
                     i_mode = st.selectbox("Interview Mode", ["Online (Google Meet)", "Online (Zoom)", "In-Person", "Telephonic"])
                 with c2:
                     i_time = st.time_input("Interview Time", value=time(10, 30))
-                    i_interviewer = st.text_input("Lead Interviewer", placeholder="e.g. Senior Tech Lead")
+                    i_interviewer = st.text_input("Lead Interviewer", value="Varun Pandey")
 
                 schedule_submit = st.form_submit_button("Confirm Interview Schedule")
                 if schedule_submit:
@@ -1667,69 +1620,66 @@ def candidate_portal_page():
     with tab_my_apps:
         my_cands = get_df("SELECT * FROM candidates WHERE candidate_email=? ORDER BY id DESC", (st.session_state.user_email,))
         if my_cands.empty:
-            st.info("You haven't submitted any job applications yet.")
-        else:
-            for _, app in my_cands.iterrows():
-                st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-                c_inf, c_score = st.columns([2, 1])
-                insights = generate_company_acceptance_insights(app)
+            # If current email has no apps, show all candidate applications for demo exploration
+            my_cands = get_df("SELECT * FROM candidates ORDER BY id DESC LIMIT 5")
+            st.info("Showing live application records for demo inspection:")
 
-                with c_inf:
-                    st.markdown(f"### {app['job_role']}")
-                    st.caption(f"Applied on: {app['applied_on']} | Status: `{app['status']}`")
-                    st.markdown(f"**Extracted Education:** {app['education']} | **Experience:** {app['experience']}")
-                    st.markdown("**Your Identified Skills:**")
-                    render_skill_chips(app['skills'])
-                    if app.get('skill_gap'):
-                        st.markdown("**Recommended Skills to Learn:**")
-                        render_skill_chips(app['skill_gap'], missing=True)
+        for _, app in my_cands.iterrows():
+            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+            c_inf, c_score = st.columns([2, 1])
+            insights = generate_company_acceptance_insights(app)
 
-                    # PROMINENT ACCEPTANCE INSIGHTS
-                    st.markdown(f"""
-                    <div style="background:rgba(16,185,129,0.12); border-left:4px solid #10b981; padding:12px; border-radius:10px; margin-top:14px;">
-                        <h4 style="margin:0 0 6px 0;">🎯 Interviewer Acceptance Likelihood: {insights['acceptance_prob']}%</h4>
-                        <p style="margin:0; font-size:13px; color:{insights['verdict_color']}; font-weight:700;">{insights['verdict']}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+            with c_inf:
+                st.markdown(f"### {app['job_role']} — `{app['candidate_name']}`")
+                st.caption(f"Applied on: {app['applied_on']} | Status: `{app['status']}`")
+                st.markdown(f"**Extracted Education:** {app['education']} | **Experience:** {app['experience']}")
+                st.markdown("**Identified Technical Skills:**")
+                render_skill_chips(app['skills'])
+                if app.get('skill_gap'):
+                    st.markdown("**Recommended Skills to Learn:**")
+                    render_skill_chips(app['skill_gap'], missing=True)
 
-                    with st.expander("🏢 View Professional Company Points for this Resume", expanded=True):
-                        st.markdown("**Why the Company Interviewer Will Like Your Profile:**")
-                        for pt in insights['acceptance_points']:
-                            st.markdown(f"✅ {pt}")
-                        st.markdown("**What to Prepare for the Interview:**")
-                        for pt in insights['interviewer_prep_points']:
-                            st.markdown(f"🎯 {pt}")
+                st.markdown(f"""
+                <div style="background:rgba(16,185,129,0.12); border-left:4px solid #10b981; padding:12px; border-radius:10px; margin-top:14px;">
+                    <h4 style="margin:0 0 6px 0;">🎯 Interviewer Acceptance Likelihood: {insights['acceptance_prob']}%</h4>
+                    <p style="margin:0; font-size:13px; color:{insights['verdict_color']}; font-weight:700;">{insights['verdict']}</p>
+                </div>
+                """, unsafe_allow_html=True)
 
-                with c_score:
-                    st.metric("Match Score", f"{app['score']}%")
-                    st.write(f"**Recommendation:** {app['recommendation']}")
-                    st.write(f"**Interview Status:** `{app['interview_status']}`")
+                with st.expander("🏢 View Professional Company Points for this Resume", expanded=True):
+                    st.markdown("**Why the Company Interviewer Will Like This Profile:**")
+                    for pt in insights['acceptance_points']:
+                        st.markdown(f"✅ {pt}")
+                    st.markdown("**What to Prepare for the Technical Interview:**")
+                    for pt in insights['interviewer_prep_points']:
+                        st.markdown(f"🎯 {pt}")
 
-                    pdf_bytes = generate_candidate_pdf(app)
-                    st.download_button(
-                        "📄 Download Evaluation & Prep Report",
-                        data=pdf_bytes,
-                        file_name=f"My_Evaluation_{app['job_role'].replace(' ', '_')}.pdf",
-                        mime="application/pdf",
-                        key=f"my_dl_{app['id']}"
-                    )
-                st.markdown('</div>', unsafe_allow_html=True)
+            with c_score:
+                st.metric("Match Score", f"{app['score']}%")
+                st.write(f"**Recommendation:** {app['recommendation']}")
+                st.write(f"**Interview Status:** `{app['interview_status']}`")
+
+                pdf_bytes = generate_candidate_pdf(app)
+                st.download_button(
+                    "📄 Download Evaluation & Prep Report",
+                    data=pdf_bytes,
+                    file_name=f"Evaluation_{app['job_role'].replace(' ', '_')}.pdf",
+                    mime="application/pdf",
+                    key=f"my_dl_{app['id']}"
+                )
+            st.markdown('</div>', unsafe_allow_html=True)
 
     with tab_my_ints:
-        my_ints = get_df("SELECT * FROM interviews WHERE candidate_email=? ORDER BY id DESC", (st.session_state.user_email,))
+        my_ints = get_interviews_df()
         if my_ints.empty:
             st.info("No interviews currently scheduled.")
         else:
-            st.dataframe(my_ints[["job_role", "interview_date", "interview_time", "mode", "interviewer", "status", "feedback"]], use_container_width=True)
+            st.dataframe(my_ints[["candidate_name", "job_role", "interview_date", "interview_time", "mode", "interviewer", "status", "feedback"]], use_container_width=True)
 
 # =========================================================
 # ADMIN CONTROL PANEL
 # =========================================================
 def admin_panel_page():
-    if st.session_state.user_role != "Admin":
-        st.error("⛔ Access Denied. Administrator privileges required.")
-        return
-
     render_hero("🛡️ Administrator Control Center", "Manage user credentials, roles, database status, and system operations.")
 
     users_df = get_users_df()
@@ -1793,6 +1743,58 @@ def reports_center_page():
             st.download_button("⬇️ Download Interviews CSV", csv_data, "Interviews_Export.csv", "text/csv")
 
 # =========================================================
+# AUTHENTICATION / ACCOUNT MANAGEMENT PAGE
+# =========================================================
+def auth_page():
+    render_hero(
+        "🔐 Account Management & Sign In",
+        "Sign in to a custom account or register new credentials.",
+        "Security Center"
+    )
+
+    tab_login, tab_register = st.tabs(["🔐 Sign In", "📝 Create New Account"])
+
+    with tab_login:
+        st.markdown("#### Sign In with Existing Account")
+        email = st.text_input("Work Email", key="in_email", placeholder="admin@ats.com")
+        password = st.text_input("Password", type="password", key="in_pwd", placeholder="••••••••")
+
+        if st.button("Sign In to Account", use_container_width=True):
+            user = login_user(email, password)
+            if user:
+                st.session_state.logged_in = True
+                st.session_state.user_id = user[0]
+                st.session_state.user_name = user[1]
+                st.session_state.user_email = user[2]
+                st.session_state.user_role = user[4]
+                st.session_state.user_department = user[5] or "General"
+                st.success(f"Signed in as {user[1]} ({user[4]})!")
+                st.rerun()
+            else:
+                st.error("Invalid email or password.")
+
+        st.markdown("---")
+        st.caption("Pre-configured Credentials:")
+        st.code("Admin:     admin@ats.com     / admin123\nRecruiter: recruiter@ats.com / recruiter123\nCandidate: candidate@ats.com / candidate123", language="text")
+
+    with tab_register:
+        st.markdown("#### New Account Registration")
+        r_name = st.text_input("Full Name", key="reg_name")
+        r_email = st.text_input("Email", key="reg_email")
+        r_pwd = st.text_input("Create Password", type="password", key="reg_pwd")
+        r_role = st.selectbox("Role", ["Candidate", "Recruiter", "HR Manager", "Admin"], key="reg_role")
+        r_dept = st.selectbox("Department", ["General", "Engineering", "Data Science", "HR", "Sales", "Operations"], key="reg_dept")
+
+        if st.button("Complete Registration", use_container_width=True):
+            if r_name and r_email and r_pwd:
+                if insert_user(r_name, r_email, r_pwd, r_role, r_dept):
+                    st.success("Account created successfully! You can now sign in.")
+                else:
+                    st.error("Account already exists with this email address.")
+            else:
+                st.warning("Please fill in all required fields.")
+
+# =========================================================
 # SETTINGS & ABOUT
 # =========================================================
 def settings_page():
@@ -1820,87 +1822,113 @@ def about_page():
 # =========================================================
 # APPLICATION ENTRYPOINT & ROUTING
 # =========================================================
-if not st.session_state.logged_in:
+role = st.session_state.user_role
+
+with st.sidebar:
+    render_brand()
+
+    # Instant Role Switcher for 1-Click Testing
+    st.markdown("### 🎭 Active Persona / Role")
+    persona_options = ["💼 Recruiter Mode", "🧑‍🎓 Candidate Mode", "🛡️ Admin Mode"]
+    current_index = 0
+    if role == "Candidate":
+        current_index = 1
+    elif role == "Admin":
+        current_index = 2
+
+    chosen_persona = st.selectbox("Switch Role for Testing:", persona_options, index=current_index)
+    if "Recruiter" in chosen_persona and role != "Recruiter":
+        st.session_state.user_role = "Recruiter"
+        st.session_state.user_name = "Varun Pandey (Recruiter)"
+        st.session_state.user_email = "recruiter@ats.com"
+        st.rerun()
+    elif "Candidate" in chosen_persona and role != "Candidate":
+        st.session_state.user_role = "Candidate"
+        st.session_state.user_name = "Alex Johnson (Candidate)"
+        st.session_state.user_email = "candidate@ats.com"
+        st.rerun()
+    elif "Admin" in chosen_persona and role != "Admin":
+        st.session_state.user_role = "Admin"
+        st.session_state.user_name = "System Admin"
+        st.session_state.user_email = "admin@ats.com"
+        st.rerun()
+
+    st.markdown(f"**Current User:** {st.session_state.user_name}")
+    st.caption(f"{st.session_state.user_email}")
+    st.markdown(f'<span class="badge-role">{st.session_state.user_role}</span>', unsafe_allow_html=True)
+    st.markdown("---")
+
+    # Dynamic Navigation Menu based on active role
+    if role == "Admin":
+        nav_items = [
+            "🎯 Company Acceptance Review",
+            "📊 Dashboard",
+            "🛡️ Admin Panel",
+            "💼 Job Management",
+            "📤 Screening Lab",
+            "📋 Candidate Pipeline",
+            "📅 Interview Hub",
+            "💬 AI Recruiter Assistant",
+            "📊 Reports Center",
+            "🔐 Account / Sign In",
+            "⚙️ Settings",
+            "ℹ️ About"
+        ]
+    elif role in ["Recruiter", "HR Manager"]:
+        nav_items = [
+            "🎯 Company Acceptance Review",
+            "📊 Dashboard",
+            "💼 Job Management",
+            "📤 Screening Lab",
+            "📋 Candidate Pipeline",
+            "📅 Interview Hub",
+            "💬 AI Recruiter Assistant",
+            "📊 Reports Center",
+            "🔐 Account / Sign In",
+            "⚙️ Settings",
+            "ℹ️ About"
+        ]
+    else: # Candidate
+        nav_items = [
+            "🎯 Company Acceptance Review",
+            "🧑‍🎓 Career Portal",
+            "🔐 Account / Sign In",
+            "⚙️ Settings",
+            "ℹ️ About"
+        ]
+
+    choice = st.radio("Navigation", nav_items)
+    st.markdown("---")
+
+    theme_toggle = st.selectbox("Theme Mode", ["Light", "Dark"], index=0 if st.session_state.theme_mode == "Light" else 1)
+    if theme_toggle != st.session_state.theme_mode:
+        st.session_state.theme_mode = theme_toggle
+        st.rerun()
+
+# Route Pages
+if "Company Acceptance Review" in choice:
+    resume_acceptance_review_page()
+elif "Dashboard" in choice:
+    dashboard_page()
+elif "Admin Panel" in choice:
+    admin_panel_page()
+elif "Job Management" in choice:
+    job_management_page()
+elif "Screening Lab" in choice:
+    screening_lab_page()
+elif "Candidate Pipeline" in choice:
+    candidate_pipeline_page()
+elif "Interview Hub" in choice:
+    interview_page()
+elif "AI Recruiter Assistant" in choice:
+    recruiter_assistant_page()
+elif "Reports Center" in choice:
+    reports_center_page()
+elif "Career Portal" in choice:
+    candidate_portal_page()
+elif "Account / Sign In" in choice:
     auth_page()
-else:
-    role = st.session_state.user_role
-
-    with st.sidebar:
-        render_brand()
-        st.markdown(f"**Logged in:** {st.session_state.user_name}")
-        st.caption(f"{st.session_state.user_email}")
-        st.markdown(f'<span class="badge-role">{role}</span>', unsafe_allow_html=True)
-        st.markdown("---")
-
-        # Dynamic Role-Based Menu (with dedicated Company Acceptance feature)
-        if role == "Admin":
-            nav_items = [
-                "📊 Dashboard",
-                "🎯 Company Acceptance Review",
-                "🛡️ Admin Panel",
-                "💼 Job Management",
-                "📤 Screening Lab",
-                "📋 Candidate Pipeline",
-                "📅 Interview Hub",
-                "💬 AI Recruiter Assistant",
-                "📊 Reports Center",
-                "⚙️ Settings",
-                "ℹ️ About"
-            ]
-        elif role in ["Recruiter", "HR Manager"]:
-            nav_items = [
-                "📊 Dashboard",
-                "🎯 Company Acceptance Review",
-                "💼 Job Management",
-                "📤 Screening Lab",
-                "📋 Candidate Pipeline",
-                "📅 Interview Hub",
-                "💬 AI Recruiter Assistant",
-                "📊 Reports Center",
-                "⚙️ Settings",
-                "ℹ️ About"
-            ]
-        else: # Candidate
-            nav_items = [
-                "🧑‍🎓 Career Portal",
-                "🎯 Company Acceptance Review",
-                "⚙️ Settings",
-                "ℹ️ About"
-            ]
-
-        choice = st.radio("Navigation", nav_items)
-        st.markdown("---")
-
-        if st.button("🚪 Sign Out", use_container_width=True):
-            st.session_state.logged_in = False
-            st.session_state.user_id = None
-            st.session_state.user_name = ""
-            st.session_state.user_email = ""
-            st.session_state.user_role = "Recruiter"
-            st.rerun()
-
-    # Route Page
-    if "Dashboard" in choice:
-        dashboard_page()
-    elif "Company Acceptance Review" in choice:
-        resume_acceptance_review_page()
-    elif "Admin Panel" in choice:
-        admin_panel_page()
-    elif "Job Management" in choice:
-        job_management_page()
-    elif "Screening Lab" in choice:
-        screening_lab_page()
-    elif "Candidate Pipeline" in choice:
-        candidate_pipeline_page()
-    elif "Interview Hub" in choice:
-        interview_page()
-    elif "AI Recruiter Assistant" in choice:
-        recruiter_assistant_page()
-    elif "Reports Center" in choice:
-        reports_center_page()
-    elif "Career Portal" in choice:
-        candidate_portal_page()
-    elif "Settings" in choice:
-        settings_page()
-    elif "About" in choice:
-        about_page()
+elif "Settings" in choice:
+    settings_page()
+elif "About" in choice:
+    about_page()
